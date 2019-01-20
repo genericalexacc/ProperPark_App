@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Alert,
   Image,
   Platform,
   ScrollView,
@@ -25,26 +26,154 @@ export default class HomeScreen extends React.Component {
     this.setState({ hasCameraPermission: status === 'granted' });
   }
 
-
   static navigationOptions = {
     header: null,
-  };
+  }
+
+  checkForTimeRules(array, callback) {
+    let monthTerms = [];
+    let filterTerms = [];
+    let numbarr = []
+    array.forEach((term) => {
+      let firstIndex = term.indexOf("h");
+      if(firstIndex != term.lastIndexOf("h") && firstIndex != -1){
+        let numbarr = term.split("-")
+        if(new Date().getHours() > numbarr[0].replace("h", "") && new Date().getHours() < numbarr[1].replace("h", "")){
+          callback(false)
+        }else{
+          callback(true)
+        }
+      }
+    })
+    array.forEach((term) => {
+      if(term.indexOf("h") !== -1){
+        monthTerms.push(term)
+      }
+    })
+    console.log("1)" + monthTerms)
+    if(monthTerms.length == 0){
+      console.log("no h")
+      callback("none")
+    }
+    monthTerms.forEach((term) => {
+      if(/\d/.test(term)){
+        filterTerms.push(term)
+      }
+    })
+    filterTerms.forEach((a)=>{
+      var numb = a.match(/\d/g);
+      numb = numb.join("");
+      numbarr.push(numb)
+    })
+    for(i=0; i < Math.floor(numbarr.length / 2); i++){
+      console.log(numbarr[i*2], numbarr[(i*2)+1])
+      if(new Date().getHours() > numbarr[i*2] && new Date().getHours() < numbarr[(i*2)+1] ){
+        callback(false)
+      }else{
+        callback(true)
+      }
+    }
+  }
+
+  // checkForMonthRules(array, callback){
+  //   let months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+  //   let monthTerms = [];
+  //   let filterTerms = [];
+  //   let numbarr = []
+
+  //   array.forEach((term) => {
+  //     let firstIndex = months.indexOf(term);
+  //     if(firstIndex != months.lastIndexOf(term) && firstIndex != -1){
+  //       let numbarr = term.split("au")
+  //       if(new Date().getMonth() > numbarr[0] && new Date().getMonth() < numbarr[1]){
+  //         callback(false)
+  //       }else{
+  //         callback(true)
+  //       }
+  //     }
+  //   })
+  //   array.forEach((term) => {
+  //     if(months.indexOf(term) !== -1){
+  //       monthTerms.push(term)
+  //     }
+  //   })
+  //   if(monthTerms.length == 0){
+  //     callback("none")
+  //   }
+  //   monthTerms.forEach((term) => {
+  //     if(/\d/.test(term)){
+  //       filterTerms.push(term)
+  //     }
+  //   })
+  //   filterTerms.forEach((a)=>{
+  //     var numb = a.match(/\d/g);
+  //     numb = numb.join("");
+  //     numbarr.push(numb)
+  //   })
+  //   let timeGood = true;
+  //   for(i=0; i < Math.floor(numbarr.length / 2); i++){
+  //     console.log(numbarr[i*2], numbarr[(i*2)+1])
+  //     if(new Date().getHours() > numbarr[i*2] && new Date().getHours() < numbarr[(i*2)+1]){
+  //       callback(false)
+  //     }else{
+  //       callback(true)
+  //     }
+  //   }
+  // }
+
+    // ["fl@cl",
+    // "13h",
+    // "-14h",
+    // "vendredi",
+    // "lorsque",
+    // "stationnement",
+    // "permis"]
 
   snap = async () => {
     if (this.camera) {
-      let photo = await this.camera.takePictureAsync({base64: true, quality: 0.05});
-      fetch('http://localhost:3000/api/test', {
-        method: 'GET',
+      let photo = await this.camera.takePictureAsync({quality: 0.05});
+      let localUri = photo.uri;
+      let filename = localUri.split('/').pop();
+      let formData = new FormData();
+      let match = /\.(\w+)$/.exec(filename);
+      let type = match ? `image/${match[1]}` : `image`;
+      formData.append('sign', { uri: localUri, name: filename, type });
+      fetch('http://3.89.45.182/api/upload_sign', {
+        method: 'POST',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-        }
+        },
+        body: formData
       }).then((data) => {
         console.log(data)
+        let wordz = []
+        let monthsFr = {'janvier': 'jan', 'fevrier': 'feb', 'mars':'mar', 'avril': 'apr', 'mai': 'may', 'juin': 'jun', 'juillet': 'jul', 'aout': 'aug', 'septembre': 'sep', 'octobre': 'oct', 'novembre': 'nov', 'decembre': 'dec'}
+        JSON.parse(data._bodyText).regions.forEach((region)=>{
+            region.lines.forEach((line)=>{
+              line.words.forEach((word) => {
+                a = word.text.toLowerCase().replace("é", "e").replace("è", "e").replace("ê", "e").replace("ë", "e").replace("à", "a").replace("á", "a").replace("â", "a").replace("ô", "o").replace('.', '')
+                wordz.push(Object.keys(monthsFr).indexOf(a) === -1 ? a : monthsFr[a])
+              })
+            })
+        })
+        this.checkForTimeRules(wordz, (word) => {
+          console.log(wordz, word)
+          if(wordz.length == 0){
+            // Alert.alert("Sign could not be read.", "")
+            this.snap()
+          }else if(word == "none"){
+            this.snap()
+            // Alert.alert("Sign could not be read.", "")
+          }else if(word){
+            Alert.alert("✅  You can park here", "")
+          }else{
+            Alert.alert("⚠️WARNING! YOU CAN'T PARK HERE!⚠️", "")
+          }
+        })
       })
-      console.log(photo.base64)
     }
-  };
+  }
 
   render() {
     const { hasCameraPermission } = this.state;
@@ -55,7 +184,6 @@ export default class HomeScreen extends React.Component {
     } else {
     return (
       <View style={styles.container}>
-
       <View style={{ flex: 1 }}>
           <Camera style={{ flex: 1 }} type={this.state.type}  ref={ref => { this.camera = ref }}>
             <View 
@@ -92,39 +220,6 @@ export default class HomeScreen extends React.Component {
     );
   }
 }
-
-  _maybeRenderDevelopmentModeWarning() {
-    if (__DEV__) {
-      const learnMoreButton = (
-        <Text onPress={this._handleLearnMorePress} style={styles.helpLinkText}>
-          Learn more
-        </Text>
-      );
-
-      return (
-        <Text style={styles.developmentModeText}>
-          Development mode is enabled, your app will be slower but you can use useful development
-          tools. {learnMoreButton}
-        </Text>
-      );
-    } else {
-      return (
-        <Text style={styles.developmentModeText}>
-          You are not in development mode, your app will run at full speed.
-        </Text>
-      );
-    }
-  }
-
-  _handleLearnMorePress = () => {
-    WebBrowser.openBrowserAsync('https://docs.expo.io/versions/latest/guides/development-mode');
-  };
-
-  _handleHelpPress = () => {
-    WebBrowser.openBrowserAsync(
-      'https://docs.expo.io/versions/latest/guides/up-and-running.html#can-t-see-your-changes'
-    );
-  };
 }
 
 const styles = StyleSheet.create({
