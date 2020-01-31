@@ -6,4 +6,4 @@ By snapping a picture of the parking panels, the mobile app deciphers the rest f
 
 ## 1st place winner at Polytechnique Hackathon
 
-<img alt="Input image" style="display: inline;" src="https://raw.githubusercontent.com/genericalexacc/ProperPark_App/master/gallery.jpg" width="600">
+<img alt="Input image" style="display: inline;" src="https://raw.githubusercontent.com/genericalexacc/ProperPark_App/master/1.jpg" width="600">
